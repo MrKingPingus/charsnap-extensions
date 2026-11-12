@@ -15,6 +15,8 @@ import { UpdateNotice }         from './UpdateNotice.jsx';
 import { useTourLauncher }      from '../../hooks/use-tour.js';
 import { DUPE_FLASH_MS }        from '../../constants/limits.js';
 import { BUG_REPORT_URL, FEATURE_REQUEST_URL } from '../../constants/links.js';
+import { RestoreBackupTile } from './RestoreBackupTile.jsx';
+import { IMPORT_ACCEPT } from '../../constants/import-flow.js';
 import changelogRaw             from '../../../CHANGELOG.md?raw';
 
 const RECENT_LIMIT = 6;
@@ -131,19 +133,20 @@ export function Lander() {
         <button className="lander-tile" onClick={onImportFile}>
           <div className="lander-tile-icon">📁</div>
           <div className="lander-tile-title">Import File</div>
-          <div className="lander-tile-sub">JSON, TXT, DOCX</div>
+          <div className="lander-tile-sub">JSON, TXT, DOCX, ODT</div>
         </button>
         <button className="lander-tile" onClick={onImportPaste}>
           <div className="lander-tile-icon">⎘</div>
           <div className="lander-tile-title">Import Paste</div>
           <div className="lander-tile-sub">Paste entries from clipboard</div>
         </button>
+        <RestoreBackupTile />
       </div>
 
       <input
         ref={fileInputRef}
         type="file"
-        accept=".txt,.docx,.json"
+        accept={IMPORT_ACCEPT}
         style={{ display: 'none' }}
         onChange={onImportFileChosen}
       />

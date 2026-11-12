@@ -35,14 +35,14 @@ import {
 // sizing menu. This component only renders and reports that it wants to close.
 // `hideBooks` (host mode) drops the lorebooks column: CharSnap decides which
 // book is open, so the menu is import / export alone, in one column.
-export function TitleMenu({ anchorRect, onClose, onMouseEnter, onMouseLeave, hideBooks = false }) {
+export function TitleMenu({ anchorRect, onClose, onMouseEnter, onMouseLeave, onEngage, hideBooks = false }) {
   const menuRef = useRef(null);
   const [pos, setPos] = useState(null);
 
   const { lorebookSort, setLorebookSort } = useSettings();
   // `open` is constant here: TitleMenu only exists while the menu is open, so
   // mounting is the "list opened" moment the snapshot keys off.
-  const { items, sorted, createLorebook, switchLorebook, deleteLorebook } =
+  const { items, sorted, createLorebook, switchLorebook, deleteLorebook, duplicateLorebookById } =
     useSortedLorebooks({ mode: lorebookSort, open: true });
   const { activeLorebook } = useLorebook();
   const { entries }        = useEntries();
@@ -143,6 +143,7 @@ export function TitleMenu({ anchorRect, onClose, onMouseEnter, onMouseLeave, hid
       onMouseDown={(e) => e.stopPropagation()}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      onMouseDownCapture={onEngage}
     >
       {/* ── Left: lorebooks, or a rail back to them while importing ── */}
       {hideBooks ? null : takingOver ? (
@@ -188,6 +189,18 @@ export function TitleMenu({ anchorRect, onClose, onMouseEnter, onMouseLeave, hid
               >
                 <span className="tm-book-name">{item.name || '(unnamed)'}</span>
                 {item.relativeTime && <span className="tm-book-time">{item.relativeTime}</span>}
+                {/* #137. A word, like every per-book action on the phone's
+                    menu, and revealed on hover like the × beside it. */}
+                <span
+                  className="tm-book-dup"
+                  role="button"
+                  tabIndex={-1}
+                  aria-label={`Duplicate "${item.name || '(unnamed)'}"`}
+                  title="Make a full copy of this lorebook, alongside it"
+                  onClick={(e) => { e.stopPropagation(); duplicateLorebookById(item.id); }}
+                >
+                  Duplicate
+                </span>
                 <span
                   className="tm-book-del"
                   role="button"

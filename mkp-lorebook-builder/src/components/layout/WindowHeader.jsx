@@ -8,6 +8,7 @@ import { useSettings }          from '../../hooks/use-settings.js';
 import { useReferenceLorebook } from '../../hooks/use-reference-lorebook.js';
 import { useHostMode }          from '../../hooks/use-host.js';
 import { MenuButton }           from './MenuButton.jsx';
+import { CreatorMenu }          from './CreatorMenu.jsx';
 import { StorageUsageRing }     from './StorageUsageRing.jsx';
 import { TitleMenu }            from '../feature/TitleMenu.jsx';
 import { HostSaveButton }       from '../feature/HostSaveButton.jsx';
@@ -71,6 +72,18 @@ export function WindowHeader() {
     closeTimer.current = setTimeout(() => setTitleOpen(false), TITLE_MENU_CLOSE_MS);
   }
 
+  // A press inside a hover-opened menu means the user is now working in it,
+  // so it pins, the same as clicking the title would. Without this, choosing
+  // Import's "click to browse" opened the system file picker, the pointer
+  // counted as leaving the menu, and the menu closed behind the picker,
+  // taking its file input with it: the chosen file went nowhere and the user
+  // had to start again. A pinned menu already survived that, which is why it
+  // only ever failed on the first try.
+  function engageTitleMenu() {
+    clearTimeout(closeTimer.current);
+    setPinned(true);
+  }
+
   function handleTitleClick() {
     clearTimers();
     if (pinned) {
@@ -123,10 +136,12 @@ export function WindowHeader() {
           somewhere. The mark alone still identifies the app, and a phone user
           knows which app they opened. */}
       <div className="header-logo" onPointerDown={(e) => e.stopPropagation()}>
-        {funnyFishEnabled
-          ? <img className="logo-icon" src={logoUrl} alt="" />
-          : <span className="logo-icon">📖</span>
-        }
+        <CreatorMenu>
+          {funnyFishEnabled
+            ? <img className="logo-icon" src={logoUrl} alt="About the maker" />
+            : <span className="logo-icon" aria-label="About the maker">📖</span>
+          }
+        </CreatorMenu>
         {!isMobile && <span className="logo-text">LOREBOOK BUILDER</span>}
       </div>
 
@@ -201,6 +216,7 @@ export function WindowHeader() {
               onClose={closeTitleMenu}
               onMouseEnter={() => clearTimeout(closeTimer.current)}
               onMouseLeave={hoverClose}
+              onEngage={engageTitleMenu}
             />
           )}
         </div>

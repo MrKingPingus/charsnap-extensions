@@ -10,7 +10,7 @@ import { TriggerChips }    from './TriggerChips.jsx';
 import { DescriptionArea } from './DescriptionArea.jsx';
 import { SuggestionsTray } from './SuggestionsTray.jsx';
 import { RollbackPanel }   from './RollbackPanel.jsx';
-import { MoveToFolderButton } from './MoveToFolderButton.jsx';
+import { EntryActionsMenu }   from './EntryActionsMenu.jsx';
 import { useSettings }    from '../../hooks/use-settings.js';
 import { useMobile }      from '../../hooks/use-mobile.js';
 import { useUi }          from '../../hooks/use-ui.js';
@@ -22,73 +22,16 @@ import { diffEntries, entriesShallowEqual } from '../../services/diff-service.js
 import { useIsSelectMode, useIsSelected, useToggleSelected,
          useStagedType, useSetStagedType }              from '../../hooks/use-selection.js';
 import { ENTRY_TYPES }                              from '../../constants/entry-types.js';
+import { warningColor, charStops, triggerStops, isGradient, WARN_GREEN } from '../../services/warning-color.js';
 import { MAX_TRIGGERS, TRIGGER_WARN_YELLOW,
          CHAR_LIMIT }                               from '../../constants/limits.js';
 import { useHtmlEscape }                            from '../../hooks/use-html-escape.js';
 import { useHostMode }                              from '../../hooks/use-host.js';
 import { HOST_LIMITS }                              from '../../constants/host.js';
+import { CONDITION_FLASH_MS }                       from '../../constants/limits.js';
+import { ConditionField }                           from './ConditionField.jsx';
+import { PublicEyeIcon, PrivateEyeOffIcon, AlwaysOnIcon, ConditionIcon, ExportOffIcon } from '../ui/EntryStatusIcons.jsx';
 
-// Header status badges. CharSnap entries default to private, so Public is the
-// exception worth flagging — an open eye = "made Public". Hidden-from-Export
-// gets an export/upload glyph crossed out, a distinct metaphor from the eye.
-function PublicEyeIcon() {
-  return (
-    <span className="entry-public-icon" title="Public on CharSnap" aria-label="Public">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-        <circle cx="12" cy="12" r="3"/>
-      </svg>
-    </span>
-  );
-}
-
-function PrivateEyeOffIcon() {
-  return (
-    <span className="entry-private-icon" title="Private on CharSnap" aria-label="Private">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-        <line x1="1" y1="1" x2="23" y2="23"/>
-      </svg>
-    </span>
-  );
-}
-
-// Always-on: a small filled circle "always lit". A trigger condition gets a
-// speech-bubble-with-check glyph — "fires when the chat says so".
-function AlwaysOnIcon() {
-  return (
-    <span className="entry-always-on-icon" title="Sent every turn on CharSnap (always on)" aria-label="Always on">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="9"/>
-        <circle cx="12" cy="12" r="3" fill="currentColor"/>
-      </svg>
-    </span>
-  );
-}
-
-function ConditionIcon() {
-  return (
-    <span className="entry-condition-icon" title="Has a trigger condition (judged against the chat each turn on CharSnap)" aria-label="Trigger condition">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        <polyline points="9 10 11 12 15 8"/>
-      </svg>
-    </span>
-  );
-}
-
-function ExportOffIcon() {
-  return (
-    <span className="entry-hidden-icon" title="Entry excluded from JSON export" aria-label="Hidden from export">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-        <polyline points="16 6 12 2 8 6"/>
-        <line x1="12" y1="2" x2="12" y2="15"/>
-        <line x1="3" y1="3" x2="21" y2="21"/>
-      </svg>
-    </span>
-  );
-}
 
 // Fields the reference comparison can copy across, and each one's value in
 // the shape the store expects (fresh array, normalised booleans/strings).
@@ -104,7 +47,7 @@ export function EntryCard({ entry, index, onUpdate, onRemove, onDragHandleMouseD
   const [localCollapsed, setLocalCollapsed]   = useState(true);
   const [rollbackOpen, setRollbackOpen]       = useState(false);
   const [copyMenuOpen, setCopyMenuOpen]       = useState(false);
-  const { hideEntryStats, markPrivateEntries, counterTiers, tieredCounterEnabled, triggerDelimiter, setTriggerDelimiter, entryHeaderSize, condensedShowStats, fullCardsInSelectMode } = useSettings();
+  const { hideEntryStats, markPrivateEntries, counterTiers, tieredCounterEnabled, warningScale, triggerDelimiter, setTriggerDelimiter, entryHeaderSize, condensedShowStats, fullCardsInSelectMode } = useSettings();
   const { conflictMap, allowedOverlaps, allowOverlap, allowOverlaps, revokeOverlap } = useCrosstalk();
   const { activeToRef: nameMatchMap, matchedRefByActive } = useNameMatch();
   const setPeekReferenceEntryId = useUi((s) => s.setPeekReferenceEntryId);
@@ -313,6 +256,19 @@ export function EntryCard({ entry, index, onUpdate, onRemove, onDragHandleMouseD
     setRollbackOpen(false);
   }
 
+  // The header's condition badge: open the card and point at the field.
+  const [conditionFlash, setConditionFlash] = useState(false);
+  const conditionFlashTimer = useRef(null);
+  useEffect(() => () => clearTimeout(conditionFlashTimer.current), []);
+  function showCondition(e) {
+    e.stopPropagation();
+    if (isSearchFocused) setSearchFocusedId(null);
+    setLocalCollapsed(false);
+    setConditionFlash(true);
+    clearTimeout(conditionFlashTimer.current);
+    conditionFlashTimer.current = setTimeout(() => setConditionFlash(false), CONDITION_FLASH_MS);
+  }
+
   function toggleCollapse() {
     if (collapsed) {
       if (isSearchFocused) setSearchFocusedId(null);
@@ -422,10 +378,10 @@ export function EntryCard({ entry, index, onUpdate, onRemove, onDragHandleMouseD
             {(entry.triggerCondition ?? '').trim() !== '' && <ConditionIcon />}
             {!hideEntryStats && (
               <div className="entry-card-mobile-stats">
-                <span style={{ color: entry.triggers.length >= MAX_TRIGGERS ? 'var(--red)' : entry.triggers.length >= TRIGGER_WARN_YELLOW ? 'var(--yellow)' : 'var(--green)' }}>
+                <span style={{ color: warningColor(entry.triggers.length, triggerStops(warningScale), { gradient: isGradient(warningScale) }) }}>
                   {entry.triggers.length}/{MAX_TRIGGERS} trg
                 </span>
-                <span style={{ color: tieredCounterEnabled ? (entry.description.length >= counterTiers?.red ? 'var(--red)' : entry.description.length >= counterTiers?.yellow ? 'var(--yellow)' : 'var(--green)') : 'var(--green)' }}>
+                <span style={{ color: tieredCounterEnabled ? warningColor(entry.description.length, charStops(counterTiers, warningScale), { gradient: isGradient(warningScale) }) : WARN_GREEN }}>
                   {entry.description.length}/{CHAR_LIMIT} chr
                 </span>
               </div>
@@ -460,7 +416,7 @@ export function EntryCard({ entry, index, onUpdate, onRemove, onDragHandleMouseD
   return (
     <div
       id={`entry-${entry.id}`}
-      className={`entry-card${isSelected ? ' entry-card--selected' : ''}${isSelectMode ? ' entry-card--selectable' : ''}${isCrossFlashing ? ' entry-card--cross-flash' : ''}${isCondensed ? ' entry-card--condensed' : ''}`}
+      className={`entry-card${isSelected ? ' entry-card--selected' : ''}${isSelectMode ? ' entry-card--selectable' : ''}${isCrossFlashing ? ' entry-card--cross-flash' : ''}${isCondensed ? ' entry-card--condensed' : ''}${isComparing ? ' entry-card--comparing' : ''}`}
       style={{ '--type-color': typeColor }}
       onClick={isSelectMode ? () => toggleSelected(entry.id, 'active') : undefined}
     >
@@ -517,7 +473,9 @@ export function EntryCard({ entry, index, onUpdate, onRemove, onDragHandleMouseD
         {!isCondensed && entry.isPublic !== true && markPrivateEntries && <PrivateEyeOffIcon />}
         {!isCondensed && entry.hiddenFromExport && <ExportOffIcon />}
         {!isCondensed && entry.alwaysOn === true && <AlwaysOnIcon />}
-        {!isCondensed && (entry.triggerCondition ?? '').trim() !== '' && <ConditionIcon />}
+        {!isCondensed && (entry.triggerCondition ?? '').trim() !== '' && (
+          <ConditionIcon onClick={isSelectMode ? undefined : showCondition} />
+        )}
         {!isCondensed && sameNameRefId && (
           <button
             className={`entry-ref-badge entry-ref-badge--header touch-floor${matchedIsEqual ? ' entry-ref-badge--match' : ' entry-ref-badge--diff'}${isComparing && !matchedIsEqual ? ' entry-ref-badge--comparing' : ''}`}
@@ -541,6 +499,7 @@ export function EntryCard({ entry, index, onUpdate, onRemove, onDragHandleMouseD
               charCount={entry.description.length}
               counterTiers={counterTiers}
               tieredEnabled={tieredCounterEnabled}
+              warningScale={warningScale}
             />
           )}
           {!isSelectMode && (
@@ -553,12 +512,7 @@ export function EntryCard({ entry, index, onUpdate, onRemove, onDragHandleMouseD
             </button>
           )}
           {!isSelectMode && (
-            <button
-              className="card-action-btn card-action-btn--remove"
-              onClick={() => onRemove(entry.id)}
-            >
-              Remove
-            </button>
+            <EntryActionsMenu entry={entry} onUpdate={update} onRemove={onRemove} />
           )}
         </div>
       </div>
@@ -580,7 +534,7 @@ export function EntryCard({ entry, index, onUpdate, onRemove, onDragHandleMouseD
                 {isComparing && compareDelta?.name && (
                   <span className="diff-modified-dot" title="Differs from reference">●</span>
                 )}
-                <TitleCharCounter length={entry.name.length} />
+                <TitleCharCounter length={entry.name.length} warningScale={warningScale} />
               </div>
               <input
                 ref={nameInputRef}
@@ -666,27 +620,14 @@ export function EntryCard({ entry, index, onUpdate, onRemove, onDragHandleMouseD
 
 
           {/* Trigger condition (CharSnap) */}
-          <div className={`entry-condition-section${isComparing && compareDelta?.changedFields.has('triggerCondition') ? ' entry-field--differs' : ''}`}>
-            <div className="field-label">
-              {isComparing && compareDelta?.changedFields.has('triggerCondition') && (
-                <span className="diff-modified-dot" title="Differs from reference">●</span>
-              )}
-              TRIGGER CONDITION
-              <span className="field-label-hint">{(entry.triggerCondition ?? '').length}/{HOST_LIMITS.triggerCondition}</span>
-            </div>
-            <textarea
-              className="entry-condition-field"
-              value={entry.triggerCondition ?? ''}
-              onChange={(e) => update({ triggerCondition: e.target.value.slice(0, HOST_LIMITS.triggerCondition) })}
-              placeholder="e.g. {{user}} asks about {{char}}'s childhood"
-              rows={2}
-              spellCheck={false}
-              maxLength={HOST_LIMITS.triggerCondition}
-            />
-            <div className="entry-condition-hint">
-              Plain-language rule for when this entry applies. CharSnap judges it against the recent chat every turn; it works with or without keywords.
-            </div>
-          </div>
+          <ConditionField
+            className="entry-condition-section"
+            value={entry.triggerCondition}
+            onChange={(triggerCondition) => update({ triggerCondition })}
+            differs={!!(isComparing && compareDelta?.changedFields.has('triggerCondition'))}
+            compact={isComparing}
+            flash={conditionFlash}
+          />
 
           {/* Row 3: Suggestions tray — hidden in compare mode so both sides
               share the same minimal layout (the reference mirror doesn't
@@ -796,7 +737,7 @@ export function EntryCard({ entry, index, onUpdate, onRemove, onDragHandleMouseD
                 ? (rollback.hasUnsavedChanges
                     ? 'Edited since your newest checkpoint — open to save one'
                     : 'View and restore entry checkpoints')
-                : 'Turn on checkpoints for this lorebook'}
+                : 'Checkpoints are off for this lorebook. Click to turn them on.'}
             >
               {rollback.enabled ? (
                 <>
@@ -805,31 +746,7 @@ export function EntryCard({ entry, index, onUpdate, onRemove, onDragHandleMouseD
                   )}
                   {`↺ Checkpoints${rollback.snapshots.length > 0 ? ` (${rollback.snapshots.length})` : ''}`}
                 </>
-              ) : 'Enable checkpoints'}
-            </button>
-            <MoveToFolderButton entry={entry} />
-            <button
-              className={`entry-public-btn touch-floor${entry.isPublic === true ? ' entry-public-btn--public' : ''}`}
-              onClick={() => update({ isPublic: entry.isPublic !== true }, true)}
-              title={entry.isPublic === true ? 'Public on CharSnap — click to make private' : 'Private on CharSnap — click to make public'}
-            >
-              {entry.isPublic === true ? 'Public' : 'Private'}
-            </button>
-            <button
-              className={`hide-from-export-btn touch-floor${entry.hiddenFromExport ? ' hide-from-export-btn--active' : ''}`}
-              onClick={() => update({ hiddenFromExport: !entry.hiddenFromExport }, true)}
-              title="Exclude entry from JSON export"
-            >
-              {entry.hiddenFromExport ? 'Hidden from Export' : 'Hide from Export'}
-            </button>
-            <button
-              className={`entry-always-on-btn touch-floor${entry.alwaysOn === true ? ' entry-always-on-btn--on' : ''}`}
-              onClick={() => update({ alwaysOn: entry.alwaysOn !== true }, true)}
-              title={entry.alwaysOn === true
-                ? 'Sent to the model every turn on CharSnap — click to make it fire on triggers only'
-                : 'Fires on triggers or its condition — click to send it every turn on CharSnap'}
-            >
-              {entry.alwaysOn === true ? 'Always on' : 'Always on: off'}
+              ) : '↺ Checkpoints: off'}
             </button>
           </div>
 

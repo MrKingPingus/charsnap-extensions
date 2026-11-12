@@ -14,6 +14,8 @@ import { TitleCharCounter } from '../ui/TitleCharCounter.jsx';
 import { CyclingSelect }   from '../ui/CyclingSelect.jsx';
 import { TriggerChips }    from './TriggerChips.jsx';
 import { DescriptionArea } from './DescriptionArea.jsx';
+import { ConditionField }  from './ConditionField.jsx';
+import { MobileEntryActionsSheet } from './MobileEntryActionsSheet.jsx';
 import { SuggestionsTray } from './SuggestionsTray.jsx';
 import { RollbackPanel }   from './RollbackPanel.jsx';
 import { useDismissLayer } from '../../hooks/use-dismiss-layer.js';
@@ -27,7 +29,7 @@ export function EntryDetailPanel() {
   const searchQuery            = useUi((s) => s.searchQuery);
   const pendingFocusEntryId    = useUi((s) => s.pendingFocusEntryId);
   const setPendingFocusEntryId = useUi((s) => s.setPendingFocusEntryId);
-  const { triggerDelimiter, setTriggerDelimiter } = useSettings();
+  const { triggerDelimiter, setTriggerDelimiter, warningScale } = useSettings();
   const { conflictMap, allowedOverlaps, allowOverlap, allowOverlaps, revokeOverlap } = useCrosstalk();
   const { activeToRef: nameMatchMap } = useNameMatch();
   const setPeekReferenceEntryId = useUi((s) => s.setPeekReferenceEntryId);
@@ -77,6 +79,8 @@ export function EntryDetailPanel() {
     if (next.length !== entry.triggers.length) update({ triggers: next }, true);
   }
 
+  const [actionsOpen, setActionsOpen] = useState(false);
+
   function handleRemove() {
     if (!entry) return;
     removeEntry(entry.id);
@@ -124,10 +128,27 @@ export function EntryDetailPanel() {
             )
           )}
         </span>
-        <button className="entry-detail-remove touch-floor" onClick={handleRemove}>
-          Remove
+        {/* Was a bare Remove. The ⋯ sheet holds it (as Delete entry) with the
+            actions the desktop card's ⋯ menu has and this editor lacked. */}
+        <button
+          className="entry-detail-remove entry-detail-more touch-floor"
+          onClick={() => setActionsOpen(true)}
+          aria-label="More actions for this entry"
+          aria-haspopup="dialog"
+          disabled={!entry}
+        >
+          ⋯
         </button>
       </div>
+
+      {actionsOpen && entry && (
+        <MobileEntryActionsSheet
+          entry={entry}
+          onClose={() => setActionsOpen(false)}
+          onDelete={() => { setActionsOpen(false); handleRemove(); }}
+          onLeftBook={() => { setActionsOpen(false); handleBack(); }}
+        />
+      )}
 
       {/* Body — only rendered while there is an active entry */}
       {entry && (
@@ -136,7 +157,7 @@ export function EntryDetailPanel() {
           <div className="entry-detail-section">
             <div className="field-label">
               ENTRY NAME
-              <TitleCharCounter length={entry.name.length} />
+              <TitleCharCounter length={entry.name.length} warningScale={warningScale} />
             </div>
             <input
               ref={nameInputRef}
@@ -204,24 +225,11 @@ export function EntryDetailPanel() {
 
 
           {/* Trigger condition (CharSnap) */}
-          <div className="entry-detail-section">
-            <div className="field-label">
-              TRIGGER CONDITION
-              <span className="field-label-hint">{(entry.triggerCondition ?? '').length}/{HOST_LIMITS.triggerCondition}</span>
-            </div>
-            <textarea
-              className="entry-condition-field"
-              value={entry.triggerCondition ?? ''}
-              onChange={(e) => update({ triggerCondition: e.target.value.slice(0, HOST_LIMITS.triggerCondition) })}
-              placeholder="e.g. {{user}} asks about {{char}}'s childhood"
-              rows={2}
-              spellCheck={false}
-              maxLength={HOST_LIMITS.triggerCondition}
-            />
-            <div className="entry-condition-hint">
-              Plain-language rule for when this entry applies. CharSnap judges it against the recent chat every turn; it works with or without keywords.
-            </div>
-          </div>
+          <ConditionField
+            className="entry-detail-section"
+            value={entry.triggerCondition}
+            onChange={(triggerCondition) => update({ triggerCondition })}
+          />
 
           {/* Suggestions */}
           <SuggestionsTray entry={entry} onAddTrigger={addTrigger} onAddTriggers={addTriggers} />
@@ -250,7 +258,7 @@ export function EntryDetailPanel() {
                   ? (rollback.hasUnsavedChanges
                       ? 'Edited since your newest checkpoint — open to save one'
                       : 'View and restore entry checkpoints')
-                  : 'Turn on checkpoints for this lorebook'}
+                  : 'Checkpoints are off for this lorebook. Click to turn them on.'}
               >
                 {rollback.enabled ? (
                   <>
@@ -259,7 +267,7 @@ export function EntryDetailPanel() {
                     )}
                     {`↺ Checkpoints${rollback.snapshots.length > 0 ? ` (${rollback.snapshots.length})` : ''}`}
                   </>
-                ) : 'Enable checkpoints'}
+                ) : '↺ Checkpoints: off'}
               </button>
               <button
                 className={`entry-public-btn touch-floor${entry.isPublic === true ? ' entry-public-btn--public' : ''}`}

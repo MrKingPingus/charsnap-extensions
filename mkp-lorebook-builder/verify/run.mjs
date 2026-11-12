@@ -11,7 +11,14 @@ import { runFolderTreeChecks } from './folder-tree-checks.mjs';
 import { runSelectionRangeChecks } from './selection-range-checks.mjs';
 import { runDragDropChecks } from './drag-drop-checks.mjs';
 import { runReleaseNotesChecks } from './release-notes-checks.mjs';
+import { runWarningColorChecks } from './warning-color-checks.mjs';
+import { runEntryTransferChecks } from './entry-transfer-checks.mjs';
+import { runTemplateChecks } from './template-checks.mjs';
 import { runHostSerializeChecks } from './host-serialize-checks.mjs';
+import { runLorebookDuplicateChecks } from './lorebook-duplicate-checks.mjs';
+import { runTxtImportChecks } from './txt-import-checks.mjs';
+import { runBackupArchiveChecks } from './backup-archive-checks.mjs';
+import { runSuggestionEngineChecks } from './suggestion-engine-checks.mjs';
 import { BASE_URL } from './driver.mjs';
 
 async function serverUp() {
@@ -36,7 +43,14 @@ const pureOk = [
   runSelectionRangeChecks(),
   runDragDropChecks(),
   runReleaseNotesChecks(),
+  runWarningColorChecks(),
+  runEntryTransferChecks(),
+  runTemplateChecks(),
   runHostSerializeChecks(),
+  runLorebookDuplicateChecks(),
+  runTxtImportChecks(),
+  await runBackupArchiveChecks(),
+  runSuggestionEngineChecks(),
 ].every(Boolean);
 
 let child = null;
